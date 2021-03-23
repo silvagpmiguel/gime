@@ -49,7 +49,7 @@
           apt-get install -y sqlite3
       ;;
       rpm)
-          yum install -y sqlite3
+          yum install -y sqlite
       ;;
   esac
   echo "Done."
