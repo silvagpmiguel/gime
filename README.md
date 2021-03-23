@@ -2,7 +2,7 @@
 
 A simple bash command line program to store/display any data that the user don't want to forget.
 
-## Installation
+## Installation / Upgrade
 ```bash
 curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/install.sh | sudo bash
 ```
