@@ -64,7 +64,7 @@
 
   echo "## Configuring sqlite table..."
   mkdir -p /var/gime
-  sqlite3 -batch /var/gime/data.db "create table saved_data(keyword varchar(64) not null, label varchar(64), data varchar(1024))";
+  sqlite3 -batch /var/gime/data.db "create table if not exists saved_data(keyword varchar(64) not null, label varchar(64), data varchar(1024))";
   chown -R $SUDO_USER:$SUDO_USER /var/gime
   echo "Done."
 
