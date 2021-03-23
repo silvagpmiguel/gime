@@ -9,7 +9,7 @@ curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/install.sh | 
 
 ## Usage
 ```
-Usage: gime <KEYWORD> [flags] - Display data associated with a given keyword.
+Usage: gime <KEYWORD> [flags] - Display/Store data associated with a keyword and/or with a label.
 -h      --help                          Display program usage
 -a      --all                           Display all stored data
 -c      --contains                      Display all data that contains <KEYWORD>
