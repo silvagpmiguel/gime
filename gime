@@ -29,6 +29,7 @@ EOF
     exit
 }
 
+[[ "$#" == "0" ]] && usage
 while :; do
     case "$1" in
         -h|--help)
