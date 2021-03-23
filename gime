@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#################### DEFAULT PROGRAM ARGUMENTS ####################
+### DEFAULT PROGRAM ARGUMENTS ###
 KEYWORD=""
 DATA=""
 LABEL=""
@@ -12,7 +12,7 @@ DELETE=false
 DELETE_ALL=false
 DB_PATH=/var/gime/data.db
 
-#################### USAGE & PROGRAM ARGUMENTS PARSING ####################
+### USAGE & PROGRAM ARGUMENTS PARSING ###
 function usage() {
     printf "$1"
 cat << EOF
@@ -68,7 +68,7 @@ while :; do
     shift
 done
 
-#################### MAIN PROGRAM ####################
+### MAIN PROGRAM ###
 if $DELETE_ALL; then
     sqlite3 -batch ${DB_PATH} "delete from saved_data)"
 elif $DELETE; then

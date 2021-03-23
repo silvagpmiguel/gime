@@ -1,14 +1,8 @@
 #!/usr/bin/env bash
 
-### Check if script is being runned as root ###
-if [[ $EUID -ne 0 ]]; then
-  _error "This script must be run as root"
-  exit 1
-fi
-
 DISTRO_TYPE=""
 
-### Private functions ###
+### PRIVATE FUNCTIONS ###
 _error() {
   echo >&2 "ERROR: $*"
 }
@@ -38,9 +32,17 @@ _discover_distro_type() {
   fi
 }
 
-### Installation ###
+# FIRST WE NEED ROOT PERMISSIONS
+if [[ $EUID -ne 0 ]]; then
+  _error "This script must be run as root"
+  exit 1
+fi
+
+### INSTALLATION ###
 set -eu
 echo "# Beginning gime instalation..."
+echo "## Discover distro type..."
+_discover_distro_type
 echo "## Checking sqlite instalation..."
 case "$DISTRO_TYPE" in
     deb)
@@ -50,18 +52,16 @@ case "$DISTRO_TYPE" in
         yum install -y sqlite3
     ;;
 esac
-
-echo "## Setting executable permission for gime..."
-chmod +x gime
 echo "Done."
 
 echo "## Configuring sqlite table..."
 mkdir -p /var/gime
 sqlite3 -batch /var/gime/data.db "create table saved_data(keyword varchar(64) not null, label varchar(64), data varchar(1024))";
+chown -R $SUDO_USER:$SUDO_USER /var/gime
 echo "Done."
 
 echo "## Downloading gime binary..."
-curl https://raw.githubusercontent.com/silvagpmiguel/gime/main/gime -o /usr/local/bin/gime
+curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/gime -o /usr/local/bin/gime
 echo "Done."
 
 echo "## Setting gime executable permissions..."
