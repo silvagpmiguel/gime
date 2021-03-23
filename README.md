@@ -12,10 +12,10 @@ curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/install.sh | 
 Usage: gime <KEYWORD> [flags] - Display data associated with a given keyword.
 -h      --help                          Display program usage
 -a      --all                           Display all stored data
--f      --filter                        Filter data that contains <KEYWORD>
--fl     --filter-by-label               Filter data that has the label <KEYWORD>
+-c      --contains                      Display all data that contains <KEYWORD>
+-l      --label         <LABEL>         Set a label in saving mode. Filter by label in display mode 
+-i      --insensitive                   Set case insensitive in display mode
 -s      --save          <DATA>          Save <DATA> with the corresponding <KEYWORD>
--l      --label         <LABEL>         Set a label when saving
 -d      --delete                        Delete data that corresponds to <KEYWORD>
 -da     --delete-all                    Delete all saved data
 ```
