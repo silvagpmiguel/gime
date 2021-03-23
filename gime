@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+#################### DEFAULT PROGRAM ARGUMENTS ####################
+KEYWORD=""
+DATA=""
+LABEL=""
+ALL=false
+FILTER_KEYWORD=false
+FILTER_LABEL=false
+SAVE=false
+DELETE=false
+DELETE_ALL=false
+DB_PATH=/var/gime/data.db
+
+#################### USAGE & PROGRAM ARGUMENTS PARSING ####################
+function usage() {
+    printf "$1"
+cat << EOF
+Usage: gime <KEYWORD> [flags] - Display data associated with a given keyword.
+-h      --help                          Display program usage
+-a      --all                           Display all stored data
+-f      --filter                        Filter data that contains <KEYWORD>
+-fl     --filter-by-label               Filter data that has the label <KEYWORD>
+-s      --save          <DATA>          Save <DATA> with the corresponding <KEYWORD>
+-l      --label         <LABEL>         Set a label when saving
+-d      --delete                        Delete data that corresponds to <KEYWORD>
+-da     --delete-all                    Delete all saved data
+EOF
+    exit
+}
+
+while :; do
+    case "$1" in
+        -h|--help)
+            usage
+        ;;
+        -a|--all)
+            ALL=true; break
+        ;;
+        -fk|--filter-by-keyword)
+            FILTER_KEYWORD=true
+        ;;
+        -fl|--filter-by-label)
+            FILTER_LABEL=true
+        ;;
+        -s|--save)
+            [[ "$2" != "" ]] && SAVE=true; DATA=$(echo "$2"); shift || usage "Wrong usage.\n"
+        ;;
+        -l|--label)
+            [[ "$2" != "" ]] && LABEL=$(echo "$2"); shift || usage "Wrong usage.\n"
+        ;;
+        -d|--delete)
+            DELETE=true
+        ;;
+        -da|--delete-all)
+            DELETE_ALL=true; break
+        ;;
+        "")
+            break
+        ;;
+        ?*)
+            KEYWORD="$1"
+        ;;
+        *)
+            usage "Wrong usage.\n"
+        ;;
+    esac
+    shift
+done
+
+#################### MAIN PROGRAM ####################
+if $DELETE_ALL; then
+    sqlite3 -batch ${DB_PATH} "delete from saved_data)"
+elif $DELETE; then
+    sqlite3 -batch ${DB_PATH} "delete from saved_data where keyword='${KEYWORD}')"
+elif $SAVE; then
+    sqlite3 -batch ${DB_PATH} "insert into saved_data values('${KEYWORD}','${LABEL}','${DATA}')"
+elif $ALL; then
+    sqlite3 -batch ${DB_PATH} "select * from saved_data"
+else
+    if $FILTER_KEYWORD; then
+        sqlite3 -batch ${DB_PATH} "select data from saved_data where keyword like '${KEYWORD}'"
+    elif $FILTER_LABEL; then
+        sqlite3 -batch ${DB_PATH} "select data from saved_data where label='${KEYWORD}'"
+    else
+        sqlite3 -batch ${DB_PATH} "select data from saved_data where keyword='${KEYWORD}'"
+    fi
+fi
