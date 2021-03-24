@@ -19,106 +19,140 @@
 KEYWORD=""
 DATA=""
 LABEL=""
-ALL=false
-CONTAINS_KEYWORD=false
 SEP1="="
-CONTAINS_LABEL=false
 SEP2="="
 SAVE=false
 STRING_CASE=""
-DELETE=false
-DELETE_ALL=false
+ALL=false
+CONTAINS_LABEL=false
+CONTAINS_KEYWORD=false
+DISPLAY_MODE=""
 DB_PATH=/var/gime/data.db
 
 ### USAGE & PROGRAM ARGUMENTS PARSING ###
-function usage() {
+_usage() {
     printf "$1"
 cat << EOF
-Usage: gime <KEYWORD> [flags] - Display/Store data associated with a keyword and/or with a label.
--h      --help                          Display program usage
--a      --all                           Display all stored data
--ck     --contains-keyword              Display data that contains <KEYWORD>
--cl     --contains-label                Display data that contains <LABEL>
--l      --label         <LABEL>         Set a <LABEL> in saving mode. Filter by <LABEL> in display mode 
--i      --insensitive                   Set case insensitive in display mode
--s      --save          <DATA>          Save <DATA> along with <KEYWORD> and <LABEL> (if exists)
--d      --delete                        Delete <DATA> that matches the <KEYWORD> and <LABEL> (if exists)
--da     --delete-all                    Delete all saved data
+Usage: gime <command> [flags] - Display/Store/Delete data associated with a label.
+Available Commands & Flags
+help                    Help about any command
+save <LABEL> <DATA>     Save <DATA> along with <LABEL>
+[LABEL]                 Display mode (label not mandatory)
+    <LABEL>                         Display data associated with <LABEL>
+    -a      --all                   Display all data
+    -c      --contains <KEYWORD>    Display if data contains <KEYWORD>
+    -cl     --contains-label        Display if data contains <LABEL>
+    -i      --insensitive           Set case insensitive
+delete [LABEL]          Delete mode (label not mandatory)
+    <LABEL>                         Delete data associated with <LABEL>
+    -a      --all                   Delete all data
+    -c      --contains <KEYWORD>    Delete if data contains <KEYWORD>
+    -cl     --contains-label        Delete if data contains <LABEL>
+    -i      --insensitive           Set case insensitive
+check-for-update        Check if program has any update available
+update                  Updade program
+uninstall               Uninstall program
 EOF
     exit
 }
 
-[[ "$#" == "0" ]] && usage
+### Functions ###
+_uninstall() {
+    curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/uninstall | sudo bash
+    exit
+}
+
+_update() {
+    curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/install | sudo bash
+    exit
+}
+
+_check_update() {
+    curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/check-update | sudo bash
+    exit
+}
+
+### Program Arguments Parsing ###
+[[ "$#" == "0" ]] && _usage
 while :; do
     case "$1" in
-        -h|--help)
-            usage
+        help)
+            [[ $DISPLAY_MODE == "" ]] && _usage || LABEL="$1"
+        ;;
+        delete)
+            [[ $DISPLAY_MODE == "" ]] && DISPLAY_MODE=false || LABEL="$1"
+        ;;
+        save)
+            if [[ "$DISPLAY_MODE" == "" ]]; then
+                if [[ "$2" != "" && "$3" != "" ]]; then
+                    LABEL=$(echo "$2")
+                    DATA=$(echo "$3")
+                    sqlite3 -batch "${DB_PATH}" "insert into saved_data values('${LABEL}','${DATA}')"
+                    exit
+                else
+                    _usage "Wrong usage.\n"
+                fi
+            else
+                LABEL="$1"
+            fi
+        ;;
+        check-for-update)
+            [[ $DISPLAY_MODE == "" ]] && _check_update || LABEL="$1" 
+        ;;
+        update)
+            [[ $DISPLAY_MODE == "" ]] && _update || LABEL="$1"
+        ;;
+        uninstall)
+            [[ $DISPLAY_MODE == "" ]] && _uninstall || LABEL="$1"
         ;;
         -a|--all)
-            ALL=true; break
+            ALL=true; shift "$#"
         ;;
-        -ck|--contains-keyword)
-            CONTAINS_KEYWORD=true; SEP1=" like "
+        -c|--contains)
+            [[ "$2" != "" ]] && CONTAINS_KEYWORD=true; KEYWORD="%$(echo "$2")%"; SEP1=" like "; shift || _usage "Wrong usage.\n"
         ;;
         -cl|--contains-label)
             CONTAINS_LABEL=true; SEP2=" like "
         ;;
-        -s|--save)
-            [[ "$2" != "" ]] && SAVE=true; DATA=$(echo "$2"); shift || usage "Wrong usage.\n"
-        ;;
-        -l|--label)
-            [[ "$2" != "" ]] && LABEL=$(echo "$2"); shift || usage "Wrong usage.\n"
-        ;;
         -i|--insensitive)
             STRING_CASE="collate nocase"
         ;;
-        -d|--delete)
-            DELETE=true
-        ;;
-        -da|--delete-all)
-            DELETE_ALL=true; break
+        ?*)
+            LABEL="$1"
         ;;
         "")
-            break
-        ;;
-        ?*)
-            KEYWORD="$1"
+            [[ "$DISPLAY_MODE" == "" ]] && DISPLAY_MODE=true; break || break
         ;;
         *)
-            usage "Wrong usage.\n"
+            _usage "Wrong usage.\n"
         ;;
     esac
     shift
 done
 
-
 ### MAIN PROGRAM ###
-if $CONTAINS_KEYWORD; then
-    KEYWORD="%${KEYWORD}%"
-fi
-if $CONTAINS_LABEL; then
+if "$CONTAINS_LABEL"; then
     LABEL="%${LABEL}%"
 fi
-if $DELETE_ALL; then
-    sqlite3 -batch "${DB_PATH}" "delete from saved_data"
-elif $DELETE; then
-    if [[ "$KEYWORD" != "" && "$LABEL" != "" ]]; then
-        sqlite3 -batch "${DB_PATH}" "delete from saved_data where keyword${SEP1}'${KEYWORD}' and label${SEP2}'${LABEL}'"
-    elif [[ "$LABEL" != "" ]]; then
-        sqlite3 -batch "${DB_PATH}" "delete from saved_data where label${SEP2}'${LABEL}'"
-    else
-        sqlite3 -batch "${DB_PATH}" "delete from saved_data where keyword${SEP1}'${KEYWORD}'"
-    fi
-elif $SAVE; then
-    sqlite3 -batch "${DB_PATH}" "insert into saved_data values('${KEYWORD}','${LABEL}','${DATA}')"
-elif $ALL; then
-    sqlite3 -batch "${DB_PATH}" "select * from saved_data"
-else
-    if [[ "$KEYWORD" != "" && "$LABEL" != "" ]]; then
-        sqlite3 -batch "${DB_PATH}" "select data from saved_data where keyword${SEP1}'${KEYWORD}' ${STRING_CASE} and label${SEP2}'${LABEL}' ${STRING_CASE}"
+if "$DISPLAY_MODE"; then
+    if "$ALL"; then
+        sqlite3 -batch "${DB_PATH}" "select * from saved_data" && exit
+    elif [[ "$KEYWORD" != "" && "$LABEL" != "" ]]; then
+        sqlite3 -batch "${DB_PATH}" "select data from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE} and label${SEP2}'${LABEL}' ${STRING_CASE}"
     elif [[ "$LABEL" != "" ]]; then
         sqlite3 -batch "${DB_PATH}" "select data from saved_data where label${SEP2}'${LABEL}' ${STRING_CASE}"
     else
-        sqlite3 -batch "${DB_PATH}" "select data from saved_data where keyword${SEP1}'${KEYWORD}' ${STRING_CASE}"
+        sqlite3 -batch "${DB_PATH}" "select data from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE}"
+    fi
+else
+    if "$ALL"; then
+        sqlite3 -batch "${DB_PATH}" "delete from saved_data" && exit
+    elif [[ "$KEYWORD" != "" && "$LABEL" != "" ]]; then
+        sqlite3 -batch "${DB_PATH}" "delete from saved_data where data${SEP1}'${KEYWORD}' and label${SEP2}'${LABEL}'"
+    elif [[ "$LABEL" != "" ]]; then
+        sqlite3 -batch "${DB_PATH}" "delete from saved_data where label${SEP2}'${LABEL}'"
+    else
+        echo "sqlite3 -batch ${DB_PATH} delete from saved_data where data${SEP1}'${KEYWORD}'"
+        sqlite3 -batch "${DB_PATH}" "delete from saved_data where data${SEP1}'${KEYWORD}'"
     fi
 fi

@@ -55,7 +55,7 @@ fi
 
 ### INSTALLATION ###
 set -eu
-echo "# Beginning gime instalation..."
+echo "# Beginning gime instalation!"
 echo "## Discover distro type..."
 _discover_distro_type
 echo "## Checking sqlite instalation..."
@@ -79,8 +79,8 @@ echo "Done."
 
 echo "## Configuring sqlite table..."
 mkdir -p /var/gime
-sqlite3 -batch /var/gime/data.db "create table if not exists saved_data(keyword varchar(64) not null, label varchar(64), data varchar(1024), unique(keyword,label))";
+sqlite3 -batch /var/gime/data.db "create table if not exists saved_data(label varchar(64) not null, data varchar(1024), unique(label, data))";
 chown -R $SUDO_USER:$SUDO_USER /var/gime
 echo "Done."
 
-echo "# Gime installation complete!"
+echo "# Gime has been installed!"
