@@ -77,8 +77,9 @@ echo "## Setting gime executable permissions..."
 chmod +x /usr/local/bin/gime
 echo "Done."
 
-echo "## Configuring sqlite table..."
+echo "## Configuring sqlite table and version..."
 mkdir -p /var/gime
+curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/VERSION -o /var/gime/VERSION
 sqlite3 -batch /var/gime/data.db "create table if not exists saved_data(label varchar(64) not null, data varchar(1024), unique(label, data))";
 chown -R $SUDO_USER:$SUDO_USER /var/gime
 echo "Done."

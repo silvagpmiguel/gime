@@ -15,6 +15,6 @@
 # limitations under the License.
 
 
-OLD=/usr/local/bin/gime
-NEW=$(curl -s https://raw.githubusercontent.com/silvagpmiguel/gime/main/gime)
-cmp --silent $OLD $NEW && echo "Gime is Up to date!" || echo "Gime has a new version available!"
+OLD=$(cat /var/gime/VERSION)
+NEW=$(curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/VERSION)
+[[ "$OLD" < "$NEW" ]] && echo "Gime has a new version available!" || echo "Gime is up to date!"

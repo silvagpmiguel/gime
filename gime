@@ -62,13 +62,14 @@ _uninstall() {
     exit
 }
 
-_update() {
-    curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/install | sudo bash
-    exit
-}
-
 _check_update() {
     curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/check-update | sudo bash
+}
+
+_update() {
+    if [[ $(_check_update >&2 ) == "*new*" ]]; then
+        curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/install | sudo bash
+    fi
     exit
 }
 
@@ -97,7 +98,7 @@ while :; do
             fi
         ;;
         check-for-update)
-            [[ $DISPLAY_MODE == "" ]] && _check_update || LABEL="$1" 
+            [[ $DISPLAY_MODE == "" ]] && _check_update; exit || LABEL="$1" 
         ;;
         update)
             [[ $DISPLAY_MODE == "" ]] && _update || LABEL="$1"
@@ -152,7 +153,6 @@ else
     elif [[ "$LABEL" != "" ]]; then
         sqlite3 -batch "${DB_PATH}" "delete from saved_data where label${SEP2}'${LABEL}'"
     else
-        echo "sqlite3 -batch ${DB_PATH} delete from saved_data where data${SEP1}'${KEYWORD}'"
         sqlite3 -batch "${DB_PATH}" "delete from saved_data where data${SEP1}'${KEYWORD}'"
     fi
 fi
