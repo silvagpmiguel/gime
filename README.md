@@ -1,7 +1,7 @@
 # `gime` - Give me the labeled data
 
 A simple bash command line program to **display** data that the user does not want to forget, like: notes, reminders, passwords, usernames, etc.
-With `gime`, users can **store** their data, associating it with a label. Then, they can **display/delete**:
+With `gime`, users can **store** their data, associating it with one or multiple labels. Then, they can **display/delete**:
 - All the data
 - Data that contains `keyword`
 - Data associated with a `label`
@@ -39,6 +39,7 @@ delete [LABEL]          Delete mode (label not mandatory)
     -c      --contains <KEYWORD>    Delete if data contains <KEYWORD>1
     -cl     --contains-label        Delete if data contains <LABEL>
     -i      --insensitive           Set case insensitive
+labels                  Display all unique existing labels
 check-for-update        Check if program has any update available
 update                  Updade program
 uninstall               Uninstall program

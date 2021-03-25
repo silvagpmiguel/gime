@@ -20,7 +20,7 @@ KEYWORD=""
 DATA=""
 LABEL=""
 SEP1="="
-SEP2="="
+SEP2=" like "
 SAVE=false
 STRING_CASE=""
 ALL=false
@@ -47,8 +47,9 @@ delete [LABEL]          Delete mode (label not mandatory)
     <LABEL>                         Delete data associated with <LABEL>
     -a      --all                   Delete all data
     -c      --contains <KEYWORD>    Delete if data contains <KEYWORD>
-    -cl     --contains-label        Delete if data contains <LABEL>
+    -cl     --contains-label        Display if data contains <LABEL>
     -i      --insensitive           Set case insensitive
+labels                  Display all unique existing labels
 check-for-update        Check if program has any update available
 update                  Updade program
 uninstall               Uninstall program
@@ -67,8 +68,11 @@ _check_update() {
 }
 
 _update() {
-    if [[ $(_check_update >&2 ) == "*new*" ]]; then
+    local check=$(_check_update)
+    if [[ "$check" == *"new"* ]]; then
         curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/install | sudo bash
+    else
+        echo "$check"
     fi
     exit
 }
@@ -97,6 +101,11 @@ while :; do
                 LABEL="$1"
             fi
         ;;
+        labels)
+            IFS=','; labels=( $(sqlite3 -batch "/var/gime/data.db" "select label from saved_data") )
+            IFS=$'\n'; printf "%s\n" "${labels[@]}" | sort | uniq
+            exit
+        ;;
         check-for-update)
             [[ $DISPLAY_MODE == "" ]] && _check_update; exit || LABEL="$1" 
         ;;
@@ -113,7 +122,7 @@ while :; do
             [[ "$2" != "" ]] && CONTAINS_KEYWORD=true; KEYWORD="%$(echo "$2")%"; SEP1=" like "; shift || _usage "Wrong usage.\n"
         ;;
         -cl|--contains-label)
-            CONTAINS_LABEL=true; SEP2=" like "
+            CONTAINS_LABEL=true;
         ;;
         -i|--insensitive)
             STRING_CASE="collate nocase"
@@ -132,16 +141,21 @@ while :; do
 done
 
 ### MAIN PROGRAM ###
-if "$CONTAINS_LABEL"; then
-    LABEL="%${LABEL}%"
+if $CONTAINS_LABEL; then
+    LABEL="%${LABEL//,/%,%}%"
+else
+    LABEL="${LABEL//,/,%}"
 fi
+
 if "$DISPLAY_MODE"; then
     if "$ALL"; then
-        sqlite3 -batch "${DB_PATH}" "select * from saved_data" && exit
+        echo "Labels Data"
+        sqlite3 -batch "${DB_PATH}" "select * from saved_data" | tr '|' ' ' | column -t
+        exit
     elif [[ "$KEYWORD" != "" && "$LABEL" != "" ]]; then
-        sqlite3 -batch "${DB_PATH}" "select data from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE} and label${SEP2}'${LABEL}' ${STRING_CASE}"
+        sqlite3 -batch "${DB_PATH}" "select data from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE} and ',' || label || ','${SEP2}'%,${LABEL},%' ${STRING_CASE}"
     elif [[ "$LABEL" != "" ]]; then
-        sqlite3 -batch "${DB_PATH}" "select data from saved_data where label${SEP2}'${LABEL}' ${STRING_CASE}"
+        sqlite3 -batch "${DB_PATH}" "select data from saved_data where ',' || label || ','${SEP2}'%,${LABEL},%' ${STRING_CASE}"
     else
         sqlite3 -batch "${DB_PATH}" "select data from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE}"
     fi
@@ -149,10 +163,10 @@ else
     if "$ALL"; then
         sqlite3 -batch "${DB_PATH}" "delete from saved_data" && exit
     elif [[ "$KEYWORD" != "" && "$LABEL" != "" ]]; then
-        sqlite3 -batch "${DB_PATH}" "delete from saved_data where data${SEP1}'${KEYWORD}' and label${SEP2}'${LABEL}'"
+        sqlite3 -batch "${DB_PATH}" "delete from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE} and ',' || label || ','${SEP2}'%,${LABEL},%' ${STRING_CASE}"
     elif [[ "$LABEL" != "" ]]; then
-        sqlite3 -batch "${DB_PATH}" "delete from saved_data where label${SEP2}'${LABEL}'"
+        sqlite3 -batch "${DB_PATH}" "delete from saved_data where ',' || label || ','${SEP2}'%,${LABEL},%' ${STRING_CASE}"
     else
-        sqlite3 -batch "${DB_PATH}" "delete from saved_data where data${SEP1}'${KEYWORD}'"
+        sqlite3 -batch "${DB_PATH}" "delete from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE}"
     fi
 fi
