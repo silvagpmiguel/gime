@@ -33,6 +33,7 @@ save <LABEL> <DATA>     Save <DATA> along with <LABEL>
     -c      --contains <KEYWORD>    Display if data contains <KEYWORD>
     -cl     --contains-label        Display if data contains <LABEL>
     -i      --insensitive           Set case insensitive
+    -d      --detailed              Set detailed mode, where label and data is shown
 delete [LABEL]          Delete mode (label not mandatory)
     <LABEL>                         Delete data associated with <LABEL>
     -a      --all                   Delete all data

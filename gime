@@ -26,6 +26,8 @@ STRING_CASE=""
 ALL=false
 CONTAINS_LABEL=false
 CONTAINS_KEYWORD=false
+SHOW_LABEL=false
+COLUMNS="data"
 DISPLAY_MODE=""
 DB_PATH=/var/gime/data.db
 
@@ -43,6 +45,7 @@ save <LABEL> <DATA>     Save <DATA> along with <LABEL>
     -c      --contains <KEYWORD>    Display if data contains <KEYWORD>
     -cl     --contains-label        Display if data contains <LABEL>
     -i      --insensitive           Set case insensitive
+    -d      --detailed              Set detailed mode, where label and data is shown
 delete [LABEL]          Delete mode (label not mandatory)
     <LABEL>                         Delete data associated with <LABEL>
     -a      --all                   Delete all data
@@ -122,10 +125,13 @@ while :; do
             [[ "$2" != "" ]] && CONTAINS_KEYWORD=true; KEYWORD="%$(echo "$2")%"; SEP1=" like "; shift || _usage "Wrong usage.\n"
         ;;
         -cl|--contains-label)
-            CONTAINS_LABEL=true;
+            CONTAINS_LABEL=true
         ;;
         -i|--insensitive)
             STRING_CASE="collate nocase"
+        ;;
+        -d|--detailed)
+            SHOW_LABEL=true; COLUMNS="label,data"
         ;;
         ?*)
             LABEL="$1"
@@ -147,20 +153,25 @@ else
     LABEL="${LABEL//,/,%}"
 fi
 
-if "$DISPLAY_MODE"; then
-    if "$ALL"; then
-        echo "Labels Data"
-        sqlite3 -batch "${DB_PATH}" "select * from saved_data" | tr '|' ' ' | column -t
-        exit
-    elif [[ "$KEYWORD" != "" && "$LABEL" != "" ]]; then
-        sqlite3 -batch "${DB_PATH}" "select data from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE} and ',' || label || ','${SEP2}'%,${LABEL},%' ${STRING_CASE}"
-    elif [[ "$LABEL" != "" ]]; then
-        sqlite3 -batch "${DB_PATH}" "select data from saved_data where ',' || label || ','${SEP2}'%,${LABEL},%' ${STRING_CASE}"
+if $DISPLAY_MODE; then
+    if $ALL; then
+        RESULT=$(sqlite3 -batch "${DB_PATH}" "select * from saved_data")
     else
-        sqlite3 -batch "${DB_PATH}" "select data from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE}"
+        if [[ "$KEYWORD" != "" && "$LABEL" != "" ]]; then
+            RESULT=$(sqlite3 -batch "${DB_PATH}" "select ${COLUMNS} from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE} and ',' || label || ','${SEP2}'%,${LABEL},%' ${STRING_CASE}")
+        elif [[ "$LABEL" != "" ]]; then
+            RESULT=$(sqlite3 -batch "${DB_PATH}" "select ${COLUMNS} from saved_data where ',' || label || ','${SEP2}'%,${LABEL},%' ${STRING_CASE}")
+        else
+            RESULT=$(sqlite3 -batch "${DB_PATH}" "select ${COLUMNS} from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE}")
+        fi
+    fi
+    if [[ "$RESULT" != "" ]] && $ALL || $SHOW_LABEL; then
+        printf "Label Data\n%s\n" "${RESULT}" | tr '|' '  ' | column -t
+    elif [[ "$RESULT" != "" ]] && ! $SHOW_LABEL; then
+        printf "${RESULT}\n"
     fi
 else
-    if "$ALL"; then
+    if $ALL; then
         sqlite3 -batch "${DB_PATH}" "delete from saved_data" && exit
     elif [[ "$KEYWORD" != "" && "$LABEL" != "" ]]; then
         sqlite3 -batch "${DB_PATH}" "delete from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE} and ',' || label || ','${SEP2}'%,${LABEL},%' ${STRING_CASE}"
