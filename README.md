@@ -27,22 +27,26 @@ Usage: gime <command> [flags] - Display/Store/Delete data associated with a labe
 Available Commands & Flags
 help                    Help about any command
 save <LABEL> <DATA>     Save <DATA> along with <LABEL>
-[LABEL]                 Display mode (label not mandatory)
-    <LABEL>                         Display data associated with <LABEL>
-    -a      --all                   Display all data
-    -c      --contains <KEYWORD>    Display if data contains <KEYWORD>
-    -cl     --contains-label        Display if data contains <LABEL>
+[LABELS]                Display mode (labels not mandatory)
+    <LABEL>                         Display if there are rows that contain this <LABEL> 
+    <LABEL1,LABEL2,...>             Display if there is a label that has a subset of <LABEL1,LABEL2,...>
+    -a      --all                   Display all existing data
+    -c      --contains <KEYWORD>    Display if there are rows that the data contains <KEYWORD>
+    -cl     --contains-label        Display if there are rows where the label contains [LABELS]
     -i      --insensitive           Set case insensitive
     -d      --detailed              Set detailed mode, where label and data is shown
-delete [LABEL]          Delete mode (label not mandatory)
-    <LABEL>                         Delete data associated with <LABEL>
-    -a      --all                   Delete all data
-    -c      --contains <KEYWORD>    Delete if data contains <KEYWORD>1
-    -cl     --contains-label        Delete if data contains <LABEL>
+    -e      --equals                Set equals mode, where data is only displayed if label equals [LABELS]
+delete [LABELS]                     Delete mode (labels not mandatory)
+    <LABEL>                         Delete if there are rows that contain this <LABEL>
+    <LABEL1,LABEL2,...>             Delete if there is a label that has a subset of <LABEL1,LABEL2,...>
+    -a      --all                   Delete all existing data
+    -c      --contains <KEYWORD>    Delete if there are rows that the data contains <KEYWORD>
+    -cl     --contains-label        Delete if there are rows where the label contains [LABELS]
     -i      --insensitive           Set case insensitive
+    -e      --equals                Set equals mode, where data is only deleted if label equals [LABELS]
 labels                  Display all unique existing labels
 check-for-update        Check if program has any update available
-update                  Updade program
+update                  Update program
 uninstall               Uninstall program
 ```
 

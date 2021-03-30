@@ -19,16 +19,18 @@
 KEYWORD=""
 DATA=""
 LABEL=""
-SEP1="="
+SEP1=" like "
 SEP2=" like "
 SAVE=false
 STRING_CASE=""
+SQLITE_ARGS=( "-batch" "-separator" " " )
+COLUMNS="data"
+DISPLAY_MODE=""
 ALL=false
 CONTAINS_LABEL=false
 CONTAINS_KEYWORD=false
 SHOW_LABEL=false
-COLUMNS="data"
-DISPLAY_MODE=""
+EQUALS_MODE=false
 DB_PATH=/var/gime/data.db
 
 ### USAGE & PROGRAM ARGUMENTS PARSING ###
@@ -39,22 +41,26 @@ Usage: gime <command> [flags] - Display/Store/Delete data associated with a labe
 Available Commands & Flags
 help                    Help about any command
 save <LABEL> <DATA>     Save <DATA> along with <LABEL>
-[LABEL]                 Display mode (label not mandatory)
-    <LABEL>                         Display data associated with <LABEL>
-    -a      --all                   Display all data
-    -c      --contains <KEYWORD>    Display if data contains <KEYWORD>
-    -cl     --contains-label        Display if data contains <LABEL>
+[LABELS]                Display mode (labels not mandatory)
+    <LABEL>                         Display if there are rows that contain this <LABEL> 
+    <LABEL1,LABEL2,...>             Display if there is a label that has a subset of <LABEL1,LABEL2,...>
+    -a      --all                   Display all existing data
+    -c      --contains <KEYWORD>    Display if there are rows that the data contains <KEYWORD>
+    -cl     --contains-label        Display if there are rows where the label contains [LABELS]
     -i      --insensitive           Set case insensitive
     -d      --detailed              Set detailed mode, where label and data is shown
-delete [LABEL]          Delete mode (label not mandatory)
-    <LABEL>                         Delete data associated with <LABEL>
-    -a      --all                   Delete all data
-    -c      --contains <KEYWORD>    Delete if data contains <KEYWORD>
-    -cl     --contains-label        Display if data contains <LABEL>
+    -e      --equals                Set equals mode, where data is only displayed if label equals [LABELS]
+delete [LABELS]                     Delete mode (labels not mandatory)
+    <LABEL>                         Delete if there are rows that contain this <LABEL>
+    <LABEL1,LABEL2,...>             Delete if there is a label that has a subset of <LABEL1,LABEL2,...>
+    -a      --all                   Delete all existing data
+    -c      --contains <KEYWORD>    Delete if there are rows that the data contains <KEYWORD>
+    -cl     --contains-label        Delete if there are rows where the label contains [LABELS]
     -i      --insensitive           Set case insensitive
+    -e      --equals                Set equals mode, where data is only deleted if label equals [LABELS]
 labels                  Display all unique existing labels
 check-for-update        Check if program has any update available
-update                  Updade program
+update                  Update program
 uninstall               Uninstall program
 EOF
     exit
@@ -67,7 +73,7 @@ _uninstall() {
 }
 
 _check_update() {
-    curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/check-update | sudo bash
+    curl -sL https://raw.githubusercontent.com/silvagpmiguel/gime/main/check-update | bash
 }
 
 _update() {
@@ -122,16 +128,19 @@ while :; do
             ALL=true; shift "$#"
         ;;
         -c|--contains)
-            [[ "$2" != "" ]] && CONTAINS_KEYWORD=true; KEYWORD="%$(echo "$2")%"; SEP1=" like "; shift || _usage "Wrong usage.\n"
+            [[ "$2" != "" ]] && CONTAINS_KEYWORD=true; KEYWORD=$(echo "$2"); shift || _usage "Wrong usage.\n"
         ;;
         -cl|--contains-label)
             CONTAINS_LABEL=true
         ;;
         -i|--insensitive)
-            STRING_CASE="collate nocase"
+            STRING_CASE=" collate nocase"
         ;;
         -d|--detailed)
             SHOW_LABEL=true; COLUMNS="label,data"
+        ;;
+        -e|--equals)
+            SEP2="="; EQUALS_MODE=true
         ;;
         ?*)
             LABEL="$1"
@@ -147,26 +156,37 @@ while :; do
 done
 
 ### MAIN PROGRAM ###
-if $CONTAINS_LABEL; then
-    LABEL="%${LABEL//,/%,%}%"
-else
-    LABEL="${LABEL//,/,%}"
+if [[ "$LABEL" != "" ]]; then
+    REVERSE_LABEL=$(echo -e "${LABEL//,/\\n}" | tac)
+    REVERSE_LABEL="%,${REVERSE_LABEL//$'\n'/,%},%"
+    if $EQUALS_MODE; then
+        LABEL=",${LABEL},"
+        LABEL_COND="(',' || label || ','${SEP2}'${LABEL}'${STRING_CASE})"
+    elif $CONTAINS_LABEL; then
+        LABEL="%,${LABEL//,/%,%},%"
+        LABEL_COND="((',' || label || ','${SEP2}'${LABEL}'${STRING_CASE}) or (',' || label || ','${SEP2}'${REVERSE_LABEL}'${STRING_CASE}))"
+    else 
+        LABEL="%,${LABEL//,/,%},%"
+        LABEL_COND="((',' || label || ','${SEP2}'${LABEL}'${STRING_CASE}) or (',' || label || ','${SEP2}'${REVERSE_LABEL}'${STRING_CASE}))"
+    fi
 fi
-
+if [[ "$KEYWORD" != "" ]]; then
+    DATA_COND="(data${SEP1}'%${KEYWORD}%' ${STRING_CASE})"       
+fi 
 if $DISPLAY_MODE; then
     if $ALL; then
-        RESULT=$(sqlite3 -batch "${DB_PATH}" "select * from saved_data")
+        RESULT=$(sqlite3 "${SQLITE_ARGS[@]}" "${DB_PATH}" "select * from saved_data")
     else
         if [[ "$KEYWORD" != "" && "$LABEL" != "" ]]; then
-            RESULT=$(sqlite3 -batch "${DB_PATH}" "select ${COLUMNS} from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE} and ',' || label || ','${SEP2}'%,${LABEL},%' ${STRING_CASE}")
+            RESULT=$(sqlite3 "${SQLITE_ARGS[@]}" "${DB_PATH}" "select ${COLUMNS} from saved_data where ${DATA_COND} and ${LABEL_COND}")
         elif [[ "$LABEL" != "" ]]; then
-            RESULT=$(sqlite3 -batch "${DB_PATH}" "select ${COLUMNS} from saved_data where ',' || label || ','${SEP2}'%,${LABEL},%' ${STRING_CASE}")
+            RESULT=$(sqlite3 "${SQLITE_ARGS[@]}" "${DB_PATH}" "select ${COLUMNS} from saved_data where ${LABEL_COND}")
         else
-            RESULT=$(sqlite3 -batch "${DB_PATH}" "select ${COLUMNS} from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE}")
+            RESULT=$(sqlite3 "${SQLITE_ARGS[@]}" "${DB_PATH}" "select ${COLUMNS} from saved_data where ${DATA_COND}")
         fi
     fi
-    if [[ "$RESULT" != "" ]] && $ALL || $SHOW_LABEL; then
-        printf "Label Data\n%s\n" "${RESULT}" | tr '|' '  ' | column -t
+    if [[ "$RESULT" != "" ]] && ($ALL || $SHOW_LABEL); then
+        printf "LABEL DATA\n%s\n" "${RESULT}" | column -t
     elif [[ "$RESULT" != "" ]] && ! $SHOW_LABEL; then
         printf "${RESULT}\n"
     fi
@@ -174,10 +194,10 @@ else
     if $ALL; then
         sqlite3 -batch "${DB_PATH}" "delete from saved_data" && exit
     elif [[ "$KEYWORD" != "" && "$LABEL" != "" ]]; then
-        sqlite3 -batch "${DB_PATH}" "delete from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE} and ',' || label || ','${SEP2}'%,${LABEL},%' ${STRING_CASE}"
+        sqlite3 -batch "${DB_PATH}" "delete from saved_data where ${DATA_COND} and ${LABEL_COND}"
     elif [[ "$LABEL" != "" ]]; then
-        sqlite3 -batch "${DB_PATH}" "delete from saved_data where ',' || label || ','${SEP2}'%,${LABEL},%' ${STRING_CASE}"
+        sqlite3 -batch "${DB_PATH}" "delete from saved_data where ${LABEL_COND}"
     else
-        sqlite3 -batch "${DB_PATH}" "delete from saved_data where data${SEP1}'${KEYWORD}' ${STRING_CASE}"
+        sqlite3 -batch "${DB_PATH}" "delete from saved_data where ${DATA_COND}"
     fi
 fi
